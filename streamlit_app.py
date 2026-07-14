@@ -3,7 +3,8 @@ Streamlit front-end for the UPSC Daily News Digest.
 
 Shows the most recent auto-generated digest (from digests/latest.md), and
 also lets the user fetch fresh headlines on demand directly from the RSS
-feeds defined in fetch_news.py.
+feeds defined in fetch_news.py. Each item shows a short content summary so
+you can see why it matters without opening the link.
 """
 
 import datetime
@@ -68,7 +69,11 @@ else:
         any_items = True
         with st.expander(category, expanded=True):
             for item in items:
-                st.markdown(f"- [{item['title']}]({item['link']})  \n  _{item['source']}_")
+                st.markdown(f"**[{item['title']}]({item['link']})**")
+                st.caption(item["source"])
+                if item.get("summary"):
+                    st.markdown(f"> {item['summary']}")
+                st.markdown("---")
     if not any_items:
         st.info("Could not fetch any headlines right now. Please try again shortly.")
 
