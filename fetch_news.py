@@ -4,8 +4,9 @@ Daily UPSC News Digest Agent
 Fetches curated news from UPSC-relevant sources (The Hindu, Indian Express,
 Down To Earth, PIB) via their public RSS feeds, groups them by subject
 (useful for GS Paper mapping), and writes a dated markdown digest to the
-digests/ folder. If an OPENAI_API_KEY secret is available, it also adds a
-short AI-written brief on top of the headlines.
+digests/ folder. Each item includes a short content summary so you can see
+why it matters without opening the link. If an OPENAI_API_KEY secret is
+available, it also adds a short AI-written brief on top of the headlines.
 
 This script has NO paid dependency by default -- it works purely off free
 public RSS feeds. The AI summary step is optional and is skipped
@@ -13,6 +14,8 @@ automatically if no API key is configured.
 """
 
 import os
+import re
+import html
 import datetime
 import feedparser
 
@@ -42,6 +45,18 @@ FEEDS = {
 }
 
 MAX_ITEMS_PER_SOURCE = 6
+SUMMARY_MAX_CHARS = 260
+
+
+def clean_summary(raw_summary):
+    if not raw_summary:
+        return ""
+    text = re.sub(r"<[^>]+>", " ", raw_summary)
+    text = html.unescape(text)
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) > SUMMARY_MAX_CHARS:
+        text = text[:SUMMARY_MAX_CHARS].rsplit(" ", 1)[0].strip() + "..."
+    return text
 
 
 def fetch_category(sources):
@@ -52,11 +67,13 @@ def fetch_category(sources):
             for entry in parsed.entries[:MAX_ITEMS_PER_SOURCE]:
                 title = entry.get("title", "").strip()
                 link = entry.get("link", "").strip()
+                summary = clean_summary(entry.get("summary", ""))
                 if title and link:
                     items.append({
                         "source": source_name,
                         "title": title,
                         "link": link,
+                        "summary": summary,
                     })
         except Exception as exc:
             print(f"[warn] Failed to fetch {source_name}: {exc}")
@@ -74,16 +91,16 @@ def maybe_generate_ai_brief(all_items):
         headlines = []
         for category, items in all_items.items():
             for item in items[:3]:
-                headlines.append(f"[{category}] {item['title']}")
+                headlines.append(f"[{category}] {item['title']} -- {item['summary']}")
         if not headlines:
             return None
 
         prompt = (
             "You are helping a UPSC Civil Services aspirant. Below is a list of "
-            "today's headlines grouped by subject. Write a concise 5-6 sentence "
-            "brief highlighting the 3-4 most exam-relevant developments and why "
-            "they matter for Prelims/Mains. Do not invent facts not present in "
-            "the headlines.\n\n" + "\n".join(headlines)
+            "today's headlines with short summaries, grouped by subject. Write a "
+            "concise 5-6 sentence brief highlighting the 3-4 most exam-relevant "
+            "developments and why they matter for Prelims/Mains. Do not invent "
+            "facts not present in the headlines.\n\n" + "\n".join(headlines)
         )
 
         response = client.chat.completions.create(
@@ -115,8 +132,12 @@ def build_markdown(all_items, date_str):
         lines.append(f"## {category}")
         lines.append("")
         for item in items:
-            lines.append(f"- **[{item['title']}]({item['link']})** -- _{item['source']}_")
-        lines.append("")
+            lines.append(f"### [{item['title']}]({item['link']})")
+            lines.append(f"_{item['source']}_")
+            lines.append("")
+            if item["summary"]:
+                lines.append(f"> {item['summary']}")
+                lines.append("")
 
     return "\n".join(lines)
 
