@@ -37,6 +37,40 @@ short AI-written brief if you add an OpenAI API key.
 Edit the `FEEDS` dictionary in `fetch_news.py` to add, remove, or re-tag any
 RSS feed under a subject category.
 
+## Gold & Silver live trading agent
+
+`trading_chart_app.py` is a separate Streamlit dashboard (unrelated to the
+news digest) for tracking Gold and Silver:
+
+- A live TradingView chart widget (`OANDA:XAUUSD` / `OANDA:XAGUSD`), free and
+  requiring no API key.
+- A Plotly technical chart built from free Yahoo Finance data (`GC=F` / `SI=F`
+  futures) with moving averages, Bollinger Bands, RSI, MACD, and
+  auto-detected **support/resistance** levels drawn from recent swing
+  highs/lows.
+- An **AI agent** (`trading_agent.py`) that combines trend, momentum, and
+  proximity to support/resistance into a `BUY` / `SELL` / `HOLD` call with
+  the reasoning listed out. If `OPENAI_API_KEY` is set, it also asks an LLM
+  to turn the computed signal into a short plain-English market note (the
+  call itself is always computed deterministically, never invented by the
+  model).
+
+Run it locally with:
+
+```bash
+pip install -r requirements.txt
+streamlit run trading_chart_app.py
+```
+
+You can also run the agent standalone from the command line:
+
+```bash
+python trading_agent.py
+```
+
+This is automated technical analysis, not financial advice - always verify
+before trading and manage your own risk.
+
 ## Disclaimer
 
 This is an automated aggregator of publicly available headlines. Always
